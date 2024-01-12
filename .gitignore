@@ -3,3 +3,6 @@
 
 # PyTest
 __pycache__
+
+# Jupyter
+examples/.ipynb_checkpoints
