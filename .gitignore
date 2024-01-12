@@ -1,0 +1,5 @@
+# PyCharm IDE
+.idea
+
+# PyTest
+__pycache__
