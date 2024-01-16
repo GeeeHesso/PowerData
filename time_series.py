@@ -2,7 +2,7 @@ import numpy as np
 import datetime
 
 
-def interpolate_missing_values(time_series: list, verbose: bool = True) -> list:
+def interpolate_missing_values(time_series: list | np.ndarray, verbose: bool = True) -> list | np.ndarray:
     """Fill in the missing values (None) in a time series by interpolating between the nearest existing values.
     Wraps around if necessary."""
 
