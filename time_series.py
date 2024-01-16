@@ -103,3 +103,25 @@ def make_364_periodic(time_series: np.ndarray, year: int = None, verbose: bool =
     If it is not provided, the first Monday is found from the weekly periodicity."""
     cropped_series = crop_364(time_series, verbose=verbose)
     return roll_monday(cropped_series, year=year, verbose=verbose)
+
+
+def fourier_transform(time_series: np.ndarray) -> np.ndarray:
+    """Computes the discrete Fourier transform of a time series with 2T steps.
+    The result is stored in an array of length 2T.
+    The first T + 1  entries are the real parts of the Fourier coefficients.
+    The last T - 1 entries are the imaginary parts of all coefficients except the first and the last."""
+    complex_modes = np.fft.rfft(time_series)
+    return np.concatenate([complex_modes.real, np.delete(complex_modes.imag, [0, -1], axis=-1)], axis=-1)
+
+
+def inverse_fourier_transform(real_modes: np.ndarray) -> np.ndarray:
+    """Computes the inverse of the function 'fourier_transform'.
+    The input is a real array representing T + 1 real parts of the Fourier coefficients and T - 1 imaginary parts.
+    The output is a real time series with 2T steps."""
+    dim = len(real_modes.shape)
+    padding_range = np.array([(0, 0) for _ in range(dim - 1)] + [(0, 2)])
+    real_and_imaginary_modes = np.pad(real_modes, padding_range)
+    real_modes, imaginary_modes = np.split(real_and_imaginary_modes, 2, axis=-1)
+    imaginary_modes = np.roll(imaginary_modes, 1, axis=-1)
+    complex_modes = real_modes + 1j * imaginary_modes
+    return np.fft.irfft(complex_modes)

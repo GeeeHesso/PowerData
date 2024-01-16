@@ -58,3 +58,16 @@ def test_roll_monday(year, expected):
     result = ts.roll_monday(time_series, year)
     assert result[0] == 24 * expected
 
+
+def test_fourier_transform_and_back():
+    time_series = np.random.random((10, 364*24))
+    fourier_modes = ts.fourier_transform(time_series)
+    assert len(fourier_modes) == len(time_series)
+    assert np.max(np.abs(ts.inverse_fourier_transform(fourier_modes) / time_series - 1)) < 10e-6
+
+
+def test_inverse_fourier_transform_and_back():
+    fourier_modes = np.random.random((10, 364*24))
+    time_series = ts.inverse_fourier_transform(fourier_modes)
+    assert len(fourier_modes) == len(time_series)
+    assert np.max(np.abs(ts.fourier_transform(time_series) / fourier_modes - 1)) < 10e-6
