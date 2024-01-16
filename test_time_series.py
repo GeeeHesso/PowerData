@@ -71,3 +71,22 @@ def test_inverse_fourier_transform_and_back():
     time_series = ts.inverse_fourier_transform(fourier_modes)
     assert len(fourier_modes) == len(time_series)
     assert np.max(np.abs(ts.fourier_transform(time_series) / fourier_modes - 1)) < 10e-6
+
+
+def test_create_model():
+    # verify that the model's average is equal to the Fourier transform of the average of the input
+    time_series = [np.random.random(365 * 4) for _ in range(3)]
+    years = list(range(2001, 2004))
+    model = ts.create_model(time_series, years)
+    periodic_time_series = [ts.make_364_periodic(time_series[i], years[i]) for i in range(3)]
+    periodic_time_series_avg = np.array(periodic_time_series).mean(axis=0)
+    assert np.max(np.abs(ts.fourier_transform(periodic_time_series_avg) - model[0])) < 1e-8
+
+
+@pytest.mark.parametrize("time_series,years", [
+    ([np.random.random(365)], None),  # single time series
+    ([np.random.random(365), np.random.random(366), np.random.random(365)], [2000, 2001]) # number of years not matching
+])
+def test_create_model_fail(time_series, years):
+    with pytest.raises(Exception) as e:
+        result = ts.create_model(time_series, years)

@@ -125,3 +125,39 @@ def inverse_fourier_transform(real_modes: np.ndarray) -> np.ndarray:
     imaginary_modes = np.roll(imaginary_modes, 1, axis=-1)
     complex_modes = real_modes + 1j * imaginary_modes
     return np.fft.irfft(complex_modes)
+
+
+def create_model(time_series: list, years: list = None, verbose: bool = True) -> np.ndarray:
+    """Create a model from a list of time series"""
+    if len(time_series) == 0:
+        raise ValueError("At least 2 times series are needed to create a model")
+    if years is not None and len(years) != len(time_series):
+        raise ValueError("The number of years should be the same as the number of time series.")
+    # create periodic time series from the input
+    periodic_time_series = [make_364_periodic(series, verbose=verbose) for series in time_series] if years is None \
+        else [make_364_periodic(time_series[i], years[i], verbose=verbose) for i in range(len(time_series))]
+    # compute the Fourier transform
+    x = fourier_transform(np.array(periodic_time_series))
+    # compute the mean and covariance
+    x_mean = x.mean(axis=0)
+    x_cov = np.cov(x, rowvar=False, bias=True)
+    if verbose:
+        print("Computing the square root of a %d x %d matrix (this may take some time)" % (len(x_mean), len(x_mean)))
+    # decompose the covariance matrix into eigenvalues and eigenvectors
+    x_cov_eigval, x_cov_eigvec = np.linalg.eigh(x_cov)
+    # set to zero all negative eigenvalues resulting from numerical errors
+    x_cov_eigval[x_cov_eigval < 0.0] = 0.0
+    # compute the square root of the covariance matrix
+    x_std = x_cov_eigvec @ np.diag(np.sqrt(x_cov_eigval)) @ x_cov_eigvec.transpose()
+    # return a matrix in which the first row is the mean value and the rest the standard deviation with correlations
+    return np.concatenate((x_mean.reshape(1, -1), x_std))
+
+
+def generate_time_series(model: np.ndarray, n: int = 1, std_scaling: float = 1.0) -> np.ndarray:
+    """Generate a given number n of time series from the model.
+    The standard deviation can be adjusted with the parameter 'std_scaling'."""
+    x_mean = model[0]
+    x_std = model[1:]
+    x_size = len(x_mean)
+    return np.array([inverse_fourier_transform(x_mean + std_scaling * x_std @ np.random.normal(size=x_size))
+                     for _ in range(n)])
