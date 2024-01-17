@@ -5,4 +5,7 @@
 __pycache__
 
 # Jupyter
-examples/.ipynb_checkpoints
+*/.ipynb_checkpoints
+
+# temporary model files created in examples folder
+examples/*.npz
