@@ -164,12 +164,16 @@ def create_model(time_series: list, years: list = None,
     return sp.sparse.csr_array(np.concatenate((np.diag(x_mean), L), axis=1))
 
 
-def generate_time_series(model: sp.sparse.csr_array, n: int = 1, std_scaling: float = 1.0) -> np.ndarray:
+def generate_time_series(model: sp.sparse.csr_array, n: int = 1, std_scaling: float = 1.0,
+                         normalize: bool = False) -> np.ndarray:
     """Generate a given number n of time series from the model.
-    The standard deviation can be adjusted with the parameter 'std_scaling'."""
+    The standard deviation can be adjusted with the parameter 'std_scaling'.
+    If 'normalize' is set to True, the series is rescaled such that its mean value is equal to one."""
     T = model.shape[0]
     x = np.array([model @ np.concatenate((np.ones(T), np.random.normal(size=T, scale=std_scaling)))
                   for _ in range(n)])
+    if normalize:
+        x *= T / x[:, 0].reshape(-1, 1)
     return inverse_fourier_transform(x)
 
 
