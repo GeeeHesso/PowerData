@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 import datetime
 
 
@@ -127,8 +128,12 @@ def inverse_fourier_transform(real_modes: np.ndarray) -> np.ndarray:
     return np.fft.irfft(complex_modes)
 
 
-def create_model(time_series: list, years: list = None, verbose: bool = True) -> np.ndarray:
-    """Create a model from a list of time series"""
+def create_model(time_series: list, years: list = None, verbose: bool = True) -> sp.sparse.sparray:
+    """Create a model from a list of time series with t steps per day.
+    The model contains a recipe to generate series with a total of T = 364 * t steps.
+    The output is in the form of a T x 2T sparse matrix,
+    in which the first T x T block is diagonal and contains the mean value of the model,
+    and the second T x T block parameterize the standard deviation."""
     if len(time_series) == 0:
         raise ValueError("At least 2 times series are needed to create a model")
     if years is not None and len(years) != len(time_series):
@@ -142,22 +147,22 @@ def create_model(time_series: list, years: list = None, verbose: bool = True) ->
     x_mean = x.mean(axis=0)
     x_cov = np.cov(x, rowvar=False, bias=True)
     if verbose:
-        print("Computing the square root of a %d x %d matrix (this may take some time)" % (len(x_mean), len(x_mean)))
-    # decompose the covariance matrix into eigenvalues and eigenvectors
-    x_cov_eigval, x_cov_eigvec = np.linalg.eigh(x_cov)
-    # set to zero all negative eigenvalues resulting from numerical errors
-    x_cov_eigval[x_cov_eigval < 0.0] = 0.0
-    # compute the square root of the covariance matrix
-    x_std = x_cov_eigvec @ np.diag(np.sqrt(x_cov_eigval)) @ x_cov_eigvec.transpose()
-    # return a matrix in which the first row is the mean value and the rest the standard deviation with correlations
-    return np.concatenate((x_mean.reshape(1, -1), x_std))
+        print("Computing the Cholesky decomposition of a %d x %d matrix (this may take some time)"
+              % (len(x_mean), len(x_mean)))
+    # use the LDL decomposition that is compatible with semi-positive definite matrices
+    lu, d, perm = sp.linalg.ldl(x_cov)
+    # set to zero all negative diagonal elements resulting from numerical errors
+    d[d < 0.0] = 0.0
+    # define the lower-diagonal "square root" L of the covariance matrix, such that L * L' = cov
+    L = lu @ np.sqrt(d)
+    # arrange the result into a T x 2T sparse matrix
+    return sp.sparse.csr_array(np.concatenate((np.diag(x_mean), L), axis=1))
 
 
-def generate_time_series(model: np.ndarray, n: int = 1, std_scaling: float = 1.0) -> np.ndarray:
+def generate_time_series(model: sp.sparse.sparray, n: int = 1, std_scaling: float = 1.0) -> np.ndarray:
     """Generate a given number n of time series from the model.
     The standard deviation can be adjusted with the parameter 'std_scaling'."""
-    x_mean = model[0]
-    x_std = model[1:]
-    x_size = len(x_mean)
-    return np.array([inverse_fourier_transform(x_mean + std_scaling * x_std @ np.random.normal(size=x_size))
-                     for _ in range(n)])
+    T = model.shape[0]
+    x = np.array([model @ np.concatenate((np.ones(T), np.random.normal(size=T, scale=std_scaling)))
+                  for _ in range(n)])
+    return inverse_fourier_transform(x)

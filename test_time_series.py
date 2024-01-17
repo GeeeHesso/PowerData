@@ -73,14 +73,20 @@ def test_inverse_fourier_transform_and_back():
     assert np.max(np.abs(ts.fourier_transform(time_series) / fourier_modes - 1)) < 10e-6
 
 
-def test_create_model():
-    # verify that the model's average is equal to the Fourier transform of the average of the input
-    time_series = [np.random.random(365 * 4) for _ in range(3)]
-    years = list(range(2001, 2004))
-    model = ts.create_model(time_series, years)
-    periodic_time_series = [ts.make_364_periodic(time_series[i], years[i]) for i in range(3)]
-    periodic_time_series_avg = np.array(periodic_time_series).mean(axis=0)
-    assert np.max(np.abs(ts.fourier_transform(periodic_time_series_avg) - model[0])) < 1e-8
+@pytest.mark.parametrize("T,n", [(365, 8), (365 * 4, 3)])
+def test_create_model(T, n):
+    # verify that the model's mean is equal to the Fourier transform of the mean of its input
+    time_series = [np.random.random(T) for _ in range(n)]
+    years = list(range(2000, 2000 + n))
+    # create the model
+    model = ts.create_model(time_series, years, reduce=False)
+    # extract the mean value
+    result = model[:, :T].diagonal()
+    # compare with the Fourier transform of the mean of the time series
+    periodic_time_series = [ts.make_364_periodic(time_series[i], years[i]) for i in range(n)]
+    periodic_time_series_mean = np.array(periodic_time_series).mean(axis=0)
+    expected = ts.fourier_transform(periodic_time_series_mean)
+    assert np.max(np.abs(result - expected)) < 1e-6
 
 
 @pytest.mark.parametrize("time_series,years", [
