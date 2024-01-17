@@ -151,7 +151,7 @@ def create_model(time_series: list, years: list = None,
         print("Computing the Cholesky decomposition of a %d x %d matrix (this may take some time)"
               % (len(x_mean), len(x_mean)))
     # use the LDL decomposition that is compatible with semi-positive definite matrices
-    lu, d, perm = sp.linalg.ldl(x_cov)
+    lu, d, perm = sp.linalg.ldl(x_cov, overwrite_a=True)
     # set to zero all negative diagonal elements resulting from numerical errors
     d[d < 0.0] = 0.0
     # define the lower-diagonal "square root" L of the covariance matrix, such that L * L' = cov
