@@ -128,7 +128,8 @@ def inverse_fourier_transform(real_modes: np.ndarray) -> np.ndarray:
     return np.fft.irfft(complex_modes)
 
 
-def create_model(time_series: list, years: list = None, verbose: bool = True) -> sp.sparse.sparray:
+def create_model(time_series: list, years: list = None,
+                 reduce: bool = True, eps: float = 1e-8, verbose: bool = True) -> sp.sparse.csr_array:
     """Create a model from a list of time series with t steps per day.
     The model contains a recipe to generate series with a total of T = 364 * t steps.
     The output is in the form of a T x 2T sparse matrix,
@@ -155,14 +156,29 @@ def create_model(time_series: list, years: list = None, verbose: bool = True) ->
     d[d < 0.0] = 0.0
     # define the lower-diagonal "square root" L of the covariance matrix, such that L * L' = cov
     L = lu @ np.sqrt(d)
+    # this matrix has typically many zeros, so it can be reduced without altering the performance of the model
+    if reduce:
+        L_max = eps * np.abs(L).max()
+        L[np.abs(L) < L_max] = 0.0
     # arrange the result into a T x 2T sparse matrix
     return sp.sparse.csr_array(np.concatenate((np.diag(x_mean), L), axis=1))
 
 
-def generate_time_series(model: sp.sparse.sparray, n: int = 1, std_scaling: float = 1.0) -> np.ndarray:
+def generate_time_series(model: sp.sparse.csr_array, n: int = 1, std_scaling: float = 1.0) -> np.ndarray:
     """Generate a given number n of time series from the model.
     The standard deviation can be adjusted with the parameter 'std_scaling'."""
     T = model.shape[0]
     x = np.array([model @ np.concatenate((np.ones(T), np.random.normal(size=T, scale=std_scaling)))
                   for _ in range(n)])
     return inverse_fourier_transform(x)
+
+
+def export_model(filename: str, model: sp.sparse.csr_array) -> None:
+    """Save model to file 'filename.npz' after transforming it into a sparse matrix"""
+    sp.sparse.save_npz(filename, model)
+    return
+
+
+def import_model(filename: str) -> sp.sparse.csr_array:
+    """Load model from file 'filename'"""
+    return sp.sparse.load_npz(filename)
