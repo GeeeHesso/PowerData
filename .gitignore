@@ -1,8 +1,9 @@
 # PyCharm IDE
 .idea
 
-# PyTest
+# Python
 __pycache__
+models/__pycache__
 
 # Jupyter
 */.ipynb_checkpoints
