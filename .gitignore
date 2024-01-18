@@ -1,12 +1,12 @@
 # PyCharm IDE
-.idea
+TimeSeries/.idea
 
 # Python
-__pycache__
-models/__pycache__
+**/__pycache__
 
 # Jupyter
-*/.ipynb_checkpoints
+**/.ipynb_checkpoints
 
 # temporary model files created in examples folder
-examples/*.npz
+TimeSeries/examples/*.npz
+
