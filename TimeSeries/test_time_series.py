@@ -96,3 +96,18 @@ def test_create_model(T, n):
 def test_create_model_fail(time_series, years):
     with pytest.raises(Exception) as e:
         result = ts.create_model(time_series, years)
+
+
+@pytest.mark.parametrize("T,n", [(365*2, 8), (365 * 3, 3)])
+def test_generate_time_series(T, n):
+    # verify that time series generated with zero variance reproduce the input's average
+    time_series = np.random.random((n, T))
+    years = list(range(2000, 2000 + n))
+    # create the model
+    model = ts.create_model(time_series, years)
+    # generate a synthetic time series with zero variance
+    result = ts.generate_time_series(model, std_scaling=0.0)[0]
+    # compare with the average of time series after making them periodic
+    periodic_time_series = np.array([ts.make_364_periodic(time_series[i], years[i]) for i in range(n)])
+    expected = periodic_time_series.mean(axis=0)
+    assert np.max(np.abs(result - expected)) < 1e-6
