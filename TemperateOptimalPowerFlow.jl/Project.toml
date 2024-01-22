@@ -1,0 +1,7 @@
+name = "TemperateOptimalPowerFlow"
+uuid = "f1e0c8a6-be03-497e-b6ff-c3d2eb1ec690"
+authors = ["Marc Gillioz"]
+version = "0.1.0"
+
+[deps]
+PowerModels = "b8a7ab4e-9095-45b7-96d1-8768622bb4e5"

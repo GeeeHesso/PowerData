@@ -1,5 +1,5 @@
-# PyCharm IDE
-TimeSeries/.idea
+# IDE
+*/.idea
 
 # Python
 **/__pycache__
@@ -9,4 +9,7 @@ TimeSeries/.idea
 
 # temporary model files created in examples folder
 TimeSeries/examples/*.npz
+
+# Julia
+TemperateOptimalPowerFlow.jl/Manifest.toml
 
