@@ -47,9 +47,9 @@ def generate_all_entsoe_load_models(years_min: int, years_max: int, frequency: s
     """Generate load models for a list of 21 ENTSO-E countries., based on years between years_min and years_max
     (both included) and using time steps with the largest possible frequency
     (e.g. use ['15T', '30T', 'H'] to try building a model with 15 min, 30 min, or 1 hour time steps successively)"""
-    countries = ["AT", "BE", "BG", "CH", "CZ", "DE", "DK",
-                 "FR", "GR", "HR", "HU", "IT", "LU", "LV",
-                 "NL", "NO", "PL", "PT", "SE", "SI", "SK"]
+    countries = ["AT", "BA", "BE", "BG", "CH", "CZ", "DE", "DK", "ES",
+                 "FR", "GR", "HR", "HU", "IT", "LU", "LV", "ME",
+                 "NL", "NO", "PL", "PT", "RO", "RS", "SE", "SI", "SK"]
     for country in countries:
         generate_entsoe_load_models(country, years_min, years_max, frequency)
 
