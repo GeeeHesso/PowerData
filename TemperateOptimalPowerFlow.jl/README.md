@@ -1,7 +1,7 @@
 TOPF: Temperate Optimal Power Flow
 ==================================
 
-This project relies on a [fork](https://github.com/gillioz/PowerModels.jl)
+This package relies on a [fork](https://github.com/gillioz/PowerModels.jl)
 of the [PowerModels.jl](https://github.com/lanl-ansi/PowerModels.jl) package
 to perform an Optimal Power Flow (OPF) that disfavors heavily-loaded lines.
 
@@ -28,6 +28,27 @@ $c_i P_i^2 / P_i^{th}$
 This is independent of the sign of the power $P_i$, which can be positive or negative,
 depending on the definition of the line's direction.
 The constant $c_i$ defines the cost per unit of power.
+
+Installation
+------------
+
+Since this package relies on an unregistered fork of PowerModels,
+you first need to install it:
+
+```julia
+] add "https://github.com/gillioz/PowerModels.jl"
+```
+
+Then the package itself can be installed with
+```julia
+] dev <relative path>/TemperateOptimalPowerFlow.jl
+```
+
+You can test the installation by running
+
+```julia
+] test TemperateOptimalPowerFlow
+```
 
 
 **This repository is still under construction.**
