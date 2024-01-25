@@ -188,21 +188,21 @@ def import_model(filename: str) -> sp.sparse.csr_array:
     return sp.sparse.load_npz(filename)
 
 
-def generate_noise_with_frequencies(daily_steps: int, frequencies: list | np.ndarray):
+def generate_noise_with_frequencies(daily_steps: int, frequencies: list | np.ndarray, count: int = 1):
     """Generates a time series of 364 days with a given number of daily steps (typically 24).
     The time series is a superposition of oscillatory series (cosines)
     with the given frequencies, and with random phases distributed uniformly.
     Each oscillatory series is weighted by a random factor drawn from a normal distribution.
     The times series are normalized to have a standard deviation of one on average."""
     T = 364 * daily_steps  # length of the time series
-    t = np.array(range(T))  # time steps
     n = len(frequencies)  # number of frequencies defining the noise
-    theta = np.broadcast_to(np.random.rand(n), (T, n))  # random phases
-    A = np.broadcast_to(np.random.normal(size=n), (T, n))  # random amplitude
-    return np.sqrt(2./n) * np.sum(A * np.cos(2. * np.pi * (np.outer(t, frequencies) + theta)), axis=1)
+    freq_times_t = np.outer(range(T), frequencies).reshape(1, T, n)
+    theta = np.random.rand(count, 1, n)  # random phases
+    A = np.random.normal(size=(count, 1, n))  # random amplitude
+    return np.sqrt(2./n) * np.sum(A * np.cos(2. * np.pi * (freq_times_t + theta)), axis=2)
 
 
-def generate_noise(daily_steps: int = 24, daily_frequencies: int = 10,
+def generate_noise(daily_steps: int = 24, count: int = 1, daily_frequencies: int = 10,
                    weekly_frequencies: int = 6, yearly_frequencies: int = 10):
     """Generates a time series of 364 days with a given number of daily steps (typically 24).
     The time series is a superposition of oscillatory series (cosines)
@@ -212,5 +212,5 @@ def generate_noise(daily_steps: int = 24, daily_frequencies: int = 10,
     frequencies = np.array([364 * (n + 1) for n in range(daily_frequencies)]
                            + [52 * (n + 1) for n in range(weekly_frequencies)]
                            + [n + 1 for n in range(yearly_frequencies)]) / (364 * daily_steps)
-    return generate_noise_with_frequencies(daily_steps, frequencies)
+    return generate_noise_with_frequencies(daily_steps, frequencies, count)
 

@@ -122,8 +122,7 @@ def test_generate_time_series(T, n):
 def test_generate_noise(daily_steps, frequencies):
     # verify that the mean value of noise time series is zero and the standard deviation one
     daily_freqs, weekly_freqs, yearly_freqs = frequencies
-    noise_series = np.array([ts.generate_noise(daily_steps, daily_freqs, weekly_freqs, yearly_freqs)
-                             for _ in range(100)])
+    noise_series = ts.generate_noise(daily_steps, 100, daily_freqs, weekly_freqs, yearly_freqs)
     mean = noise_series.mean()
     std = noise_series.std(axis=1).mean()
     assert np.abs(mean) < 1e-8 and np.abs(std - 1.0) < 0.05
