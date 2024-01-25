@@ -7,8 +7,8 @@
 # Jupyter
 **/.ipynb_checkpoints
 
-# temporary model files created in examples folder
-TimeSeries/examples/*.npz
+# temporary model files created in doc folder
+TimeSeries/doc/*.npz
 
 # Julia
 TemperateOptimalPowerFlow.jl/Manifest.toml
