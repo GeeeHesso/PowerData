@@ -111,3 +111,19 @@ def test_generate_time_series(T, n):
     periodic_time_series = np.array([ts.make_364_periodic(time_series[i], years[i]) for i in range(n)])
     expected = periodic_time_series.mean(axis=0)
     assert np.max(np.abs(result - expected)) < 1e-6
+
+
+@pytest.mark.parametrize("daily_steps,frequencies", [
+    (24, (10, 6, 10)),
+    (24*2, (10, 6, 10)),
+    (24*4, (10, 6, 10)),
+    (24, (20, 6, 20)),
+])
+def test_generate_noise(daily_steps, frequencies):
+    # verify that the mean value of noise time series is zero and the standard deviation one
+    daily_freqs, weekly_freqs, yearly_freqs = frequencies
+    noise_series = np.array([ts.generate_noise(daily_steps, daily_freqs, weekly_freqs, yearly_freqs)
+                             for _ in range(100)])
+    mean = noise_series.mean()
+    std = noise_series.std(axis=1).mean()
+    assert np.abs(mean) < 1e-8 and np.abs(std - 1.0) < 0.05

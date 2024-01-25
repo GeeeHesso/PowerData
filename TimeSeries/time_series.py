@@ -186,3 +186,31 @@ def export_model(filename: str, model: sp.sparse.csr_array) -> None:
 def import_model(filename: str) -> sp.sparse.csr_array:
     """Load model from file 'filename'"""
     return sp.sparse.load_npz(filename)
+
+
+def generate_noise_with_frequencies(daily_steps: int, frequencies: list | np.ndarray):
+    """Generates a time series of 364 days with a given number of daily steps (typically 24).
+    The time series is a superposition of oscillatory series (cosines)
+    with the given frequencies, and with random phases distributed uniformly.
+    Each oscillatory series is weighted by a random factor drawn from a normal distribution.
+    The times series are normalized to have a standard deviation of one on average."""
+    T = 364 * daily_steps  # length of the time series
+    t = np.array(range(T))  # time steps
+    n = len(frequencies)  # number of frequencies defining the noise
+    theta = np.broadcast_to(np.random.rand(n), (T, n))  # random phases
+    A = np.broadcast_to(np.random.normal(size=n), (T, n))  # random amplitude
+    return np.sqrt(2./n) * np.sum(A * np.cos(2. * np.pi * (np.outer(t, frequencies) + theta)), axis=1)
+
+
+def generate_noise(daily_steps: int = 24, daily_frequencies: int = 10,
+                   weekly_frequencies: int = 6, yearly_frequencies: int = 10):
+    """Generates a time series of 364 days with a given number of daily steps (typically 24).
+    The time series is a superposition of oscillatory series (cosines)
+    with a number of daily, weekly, and yearly frequencies, and with random phases distributed uniformly.
+    Each oscillatory series is weighted by a random factor drawn from a normal distribution.
+    The times series are normalized to have a standard deviation of one on average."""
+    frequencies = np.array([364 * (n + 1) for n in range(daily_frequencies)]
+                           + [52 * (n + 1) for n in range(weekly_frequencies)]
+                           + [n + 1 for n in range(yearly_frequencies)]) / (364 * daily_steps)
+    return generate_noise_with_frequencies(daily_steps, frequencies)
+
