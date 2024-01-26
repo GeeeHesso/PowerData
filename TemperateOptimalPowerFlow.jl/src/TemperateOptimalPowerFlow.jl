@@ -10,6 +10,15 @@ using ProgressMeter
 export create_list_of_loads, get_loads_info, create_list_of_gens, get_gens_info
 export assign_loads!, assign_loads_from_file!, assign_costs!, assign_costs_from_file!
 export add_line_costs!, iterate_dc_opf
+export get_optimizer, get_silent_optimizer
+
+
+"This is an abstract function that only gets defined in extensions"
+function get_optimizer end
+
+
+"This is an abstract function that only gets defined in extensions"
+function get_silent_optimizer end
 
 
 "Adds a 'cost' field to all branches of a PowerModels network data"
