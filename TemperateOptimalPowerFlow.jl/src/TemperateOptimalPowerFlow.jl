@@ -9,7 +9,7 @@ using ProgressMeter
 
 export create_list_of_loads, get_loads_info, create_list_of_gens, get_gens_info
 export assign_loads!, assign_loads_from_file!, assign_costs!, assign_costs_from_file!
-export add_line_costs!, iterate_dc_opf
+export add_line_costs!, raise_thermal_limit!, iterate_dc_opf, compute_line_rates
 export get_optimizer, get_silent_optimizer
 
 
@@ -216,5 +216,15 @@ function iterate_dc_opf!(network::Dict{String,Any}, loads::DataFrame, costs::Dat
     nothing
 end
 
+
+"Compute the loading rate of all lines in the model"
+function compute_line_rates(network::Dict{String,Any}, optimizer) :: Dict{String, Float64}
+	solution = solve_dc_opf(network, optimizer)["solution"]
+	if length(solution) == 0
+		return Dict{String, Float64}()
+	end
+	Dict(line_id => abs(solution["branch"][line_id]["pt"]) / network["branch"][line_id]["rate_a"]
+		for line_id in keys(solution["branch"]))
+end
 
 end # module TemperateOptimalPowerFlow

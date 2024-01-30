@@ -102,4 +102,18 @@ using MathOptInterface
         @test isa(silent_optimizer, MathOptInterface.OptimizerWithAttributes)
     end
 
+    @testset "test_compute_line_rates" begin
+        # import a simple model with 3 buses (see PowerModels.jl)
+        network = parse_file("case3.m")
+        @test isa(network, Dict)
+        # get optimiser
+        optimizer = get_silent_optimizer()
+        # compute line rates
+        line_rates = compute_line_rates(network, optimizer)
+        @test length(line_rates) == 3
+        # verify that all rates are between zero and one
+        @test all(values(line_rates) .>= -1e6)
+        @test all(values(line_rates) .<= 1 + 1e6)
+    end
+
 end
