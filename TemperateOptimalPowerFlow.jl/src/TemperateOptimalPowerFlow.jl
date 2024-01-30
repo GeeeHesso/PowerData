@@ -143,14 +143,19 @@ end
 """"Perform the OPF computation for each time step, given time series for loads and production costs.
 The production of a given list of generators is recorded into a file. Existing data is not overwritten."""
 function iterate_dc_opf(network::Dict{String,Any}, loads_file::String, costs_file::String,
-    gen_info_file::String, output_file::String, optimizer,
+    output_file::String, optimizer,
     timesteps_range::UnitRange{Int} = 1:0, save_interval::Int = 150, raise_thermal_limit::Int = 5)
     # load time series into memory
     loads = CSV.read(loads_file, DataFrame)
     costs = CSV.read(costs_file, DataFrame)
-    list_of_gens = string.(CSV.read(gen_info_file, DataFrame).id)
     # if the output file exists already, load its data, otherwise create an empty dataframe
-    output = isfile(output_file) ? CSV.read(output_file, DataFrame) : DataFrame(id=list_of_gens)
+	if isfile(output_file)
+		output = CSV.read(output_file, DataFrame)
+		list_of_gens = string.(output.id)
+	else
+		list_of_gens = create_list_of_gens(network)
+    	output = DataFrame(id=list_of_gens)
+	end
     # call the main function
     iterate_dc_opf!(network, loads, costs, list_of_gens, output, output_file,
         optimizer, timesteps_range, save_interval, raise_thermal_limit)
