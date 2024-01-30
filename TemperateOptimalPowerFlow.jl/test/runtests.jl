@@ -2,6 +2,8 @@ using Test
 using PowerModels
 using TemperateOptimalPowerFlow
 using DataFrames
+using Ipopt
+using MathOptInterface
 
 
 @testset "TemperateOptimalPowerFlow.jl" begin
@@ -91,6 +93,13 @@ using DataFrames
         for i = 1:3
             @test network["load"][list_of_loads[i]]["pd"] == i
         end
+    end
+
+    @testset "test_get_optimzer" begin
+        optimizer = get_optimizer()
+        @test isa(optimizer(), Ipopt.Optimizer)
+        silent_optimizer = get_silent_optimizer()
+        @test isa(silent_optimizer, MathOptInterface.OptimizerWithAttributes)
     end
 
 end
