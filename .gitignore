@@ -13,3 +13,7 @@ TimeSeries/doc/*.npz
 # Julia
 TemperateOptimalPowerFlow.jl/Manifest.toml
 
+# data
+data/*
+
+
