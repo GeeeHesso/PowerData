@@ -1,3 +1,6 @@
 [submodule "PowerModels.jl"]
 	path = PowerModels.jl
 	url = https://github.com/gillioz/PowerModels.jl
+[submodule "TemperateOptimalPowerFlow.jl"]
+	path = TemperateOptimalPowerFlow.jl
+	url = https://github.com/gillioz/TemperateOptimalPowerFlow.jl

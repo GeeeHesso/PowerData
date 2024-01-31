@@ -8,12 +8,9 @@
 **/.ipynb_checkpoints
 
 # temporary model files created in doc folder
-TimeSeries/doc/*.npz
-
-# Julia
-TemperateOptimalPowerFlow.jl/Manifest.toml
+doc/*.npz
 
 # data
-data/*
+doc/data/*
 
 

@@ -53,7 +53,7 @@ model = time_series.create_model([time_series_1, time_series_2, time_series_3])
 
 This model can be used to generate new time series resembling the historic ones.
 
-The procedure for creating new models is detailed in a Jupyter Notebook in the [doc](./doc) directory.
+The procedure for creating new models is detailed in [a Jupyter Notebook](../doc/ENTSO-E_models.ipynb).
 Synthetic time series for power generation or cross-border flows can for instance be easily
 generated based on ENTSO-E data with the help of the [entso_e.py](./entso_e.py) module.
 
