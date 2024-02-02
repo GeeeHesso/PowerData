@@ -188,6 +188,13 @@ def import_model(filename: str) -> sp.sparse.csr_array:
     return sp.sparse.load_npz(filename)
 
 
+def compute_pairwise_correlations(time_series: list | np.ndarray):
+    """Computes a list of all correlation coefficients between pairs of time series."""
+    correlation_matrix = np.corrcoef(time_series)
+    upper_triangular_indices = np.triu_indices(correlation_matrix.shape[0], k=1)
+    return correlation_matrix[upper_triangular_indices]
+
+
 def generate_noise_with_frequencies(daily_steps: int, frequencies: list | np.ndarray, count: int = 1):
     """Generates a time series of 364 days with a given number of daily steps (typically 24).
     The time series is a superposition of oscillatory series (cosines)

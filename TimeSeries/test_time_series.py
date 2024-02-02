@@ -113,6 +113,23 @@ def test_generate_time_series(T, n):
     assert np.max(np.abs(result - expected)) < 1e-6
 
 
+@pytest.mark.parametrize("series_count, series_length, series_type", [
+    (10, 364, "list"),
+    (16, 4*364, "np.ndarray")
+])
+def test_compute_pairwise_correlations(series_count, series_length, series_type):
+    # generate a number of random time series
+    if series_type == "list":
+        time_series = [np.random.normal(size=(series_length)) for _ in range(series_count)]
+    else:
+        time_series = np.random.normal(size=(series_count, series_length))
+    # compute the correlation coefficients
+    correlations = ts.compute_pairwise_correlations(time_series)
+    # verify that the number of pairwise correlation is correct and that all correlations are between +1 and -1
+    assert correlations.shape == (series_count * (series_count - 1) // 2, ) \
+        and np.abs(correlations).max() <= 1.0
+
+
 @pytest.mark.parametrize("daily_steps,frequencies", [
     (24, (10, 6, 10)),
     (24*2, (10, 6, 10)),
