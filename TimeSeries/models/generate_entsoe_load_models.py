@@ -27,7 +27,8 @@ def generate_entsoe_load_models(country: str, years_min: int, years_max: int, fr
             if missing_values < 364:
                 print('ok with %d missing values' % missing_values)
                 ok_count += 1
-                data[year] = ts.interpolate_missing_values(year_data, verbose=False)
+                year_data = ts.interpolate_missing_values(year_data, verbose=False)
+                data[year] = ts.make_364_periodic(year_data, year, verbose=False)
             else:
                 print('X')
                 fail_count += 1
@@ -36,7 +37,7 @@ def generate_entsoe_load_models(country: str, years_min: int, years_max: int, fr
         if ok_count >= 5:
             valid_years = list(data.keys())
             print(' => Creating model based on years', valid_years)
-            model = ts.create_model([data[year] for year in valid_years], valid_years, verbose=False)
+            model = ts.create_model([data[year] for year in valid_years], verbose=False)
             filename = 'entsoe_load_%s_%d_%d' % (country, min(valid_years), max(valid_years))
             print(' => Writing to file', filename)
             ts.export_model(filename, model)

@@ -111,6 +111,8 @@ def fourier_transform(time_series: np.ndarray) -> np.ndarray:
     The result is stored in an array of length 2T.
     The first T + 1  entries are the real parts of the Fourier coefficients.
     The last T - 1 entries are the imaginary parts of all coefficients except the first and the last."""
+    if time_series.shape[-1] % 2 != 0:
+        raise ValueError("The fourier transform requires a series of even length")
     complex_modes = np.fft.rfft(time_series)
     return np.concatenate([complex_modes.real, np.delete(complex_modes.imag, [0, -1], axis=-1)], axis=-1)
 
@@ -120,6 +122,8 @@ def inverse_fourier_transform(real_modes: np.ndarray) -> np.ndarray:
     The input is a real array representing T + 1 real parts of the Fourier coefficients and T - 1 imaginary parts.
     The output is a real time series with 2T steps."""
     dim = len(real_modes.shape)
+    if real_modes.shape[-1] % 2 != 0:
+        raise ValueError("The inverse fourier transform requires a series of even length")
     padding_range = np.array([(0, 0) for _ in range(dim - 1)] + [(0, 2)])
     real_and_imaginary_modes = np.pad(real_modes, padding_range)
     real_modes, imaginary_modes = np.split(real_and_imaginary_modes, 2, axis=-1)
@@ -128,28 +132,21 @@ def inverse_fourier_transform(real_modes: np.ndarray) -> np.ndarray:
     return np.fft.irfft(complex_modes)
 
 
-def create_model(time_series: list, years: list = None,
-                 reduce: bool = True, eps: float = 1e-8, verbose: bool = True) -> sp.sparse.csr_array:
-    """Create a model from a list of time series with t steps per day.
-    The model contains a recipe to generate series with a total of T = 364 * t steps.
+def create_model(time_series: list | np.ndarray, reduce: bool = True,
+                 eps: float = 1e-8, verbose: bool = True) -> sp.sparse.csr_array:
+    """Create a model from a list of time series with T steps each.
     The output is in the form of a T x 2T sparse matrix,
     in which the first T x T block is diagonal and contains the mean value of the model,
     and the second T x T block parameterize the standard deviation."""
-    if len(time_series) == 0:
+    if len(time_series) < 2:
         raise ValueError("At least 2 times series are needed to create a model")
-    if years is not None and len(years) != len(time_series):
-        raise ValueError("The number of years should be the same as the number of time series.")
-    # create periodic time series from the input
-    periodic_time_series = [make_364_periodic(series, verbose=verbose) for series in time_series] if years is None \
-        else [make_364_periodic(time_series[i], years[i], verbose=verbose) for i in range(len(time_series))]
     # compute the Fourier transform
-    x = fourier_transform(np.array(periodic_time_series))
+    x = fourier_transform(np.array(time_series))
     # compute the mean and covariance
     x_mean = x.mean(axis=0)
     x_cov = np.cov(x, rowvar=False, bias=True)
     if verbose:
-        print("Computing the Cholesky decomposition of a %d x %d matrix (this may take some time)"
-              % (len(x_mean), len(x_mean)))
+        print("Computing the Cholesky decomposition of a %d x %d matrix (this may take some time)" % x_cov.shape)
     # use the LDL decomposition that is compatible with semi-positive definite matrices
     lu, d, perm = sp.linalg.ldl(x_cov, overwrite_a=True)
     # set to zero all negative diagonal elements resulting from numerical errors

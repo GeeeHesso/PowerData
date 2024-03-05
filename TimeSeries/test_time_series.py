@@ -73,43 +73,39 @@ def test_inverse_fourier_transform_and_back():
     assert np.max(np.abs(ts.fourier_transform(time_series) / fourier_modes - 1)) < 10e-6
 
 
-@pytest.mark.parametrize("T,n", [(365, 8), (365 * 4, 3)])
+@pytest.mark.parametrize("T,n", [(100, 8), (365 * 4, 3)])
 def test_create_model(T, n):
     # verify that the model's mean is equal to the Fourier transform of the mean of its input
     time_series = [np.random.random(T) for _ in range(n)]
-    years = list(range(2000, 2000 + n))
     # create the model
-    model = ts.create_model(time_series, years, reduce=False)
+    model = ts.create_model(time_series, reduce=False)
     # extract the mean value
-    result = model[:, :T].diagonal()
+    result = model.diagonal()
     # compare with the Fourier transform of the mean of the time series
-    periodic_time_series = [ts.make_364_periodic(time_series[i], years[i]) for i in range(n)]
-    periodic_time_series_mean = np.array(periodic_time_series).mean(axis=0)
-    expected = ts.fourier_transform(periodic_time_series_mean)
+    expected = ts.fourier_transform(np.array(time_series).mean(axis=0))
     assert np.max(np.abs(result - expected)) < 1e-6
 
 
-@pytest.mark.parametrize("time_series,years", [
-    ([np.random.random(365)], None),  # single time series
-    ([np.random.random(365), np.random.random(366), np.random.random(365)], [2000, 2001]) # number of years not matching
+@pytest.mark.parametrize("time_series", [
+    [np.random.random(365)],  # single time series
+    [np.random.random(20), np.random.random(30)],   # time series of unequal length
+    np.random.random((3, 365))    # time series with odd number of steps
 ])
-def test_create_model_fail(time_series, years):
+def test_create_model_fail(time_series):
     with pytest.raises(Exception) as e:
-        result = ts.create_model(time_series, years)
+        result = ts.create_model(time_series)
 
 
-@pytest.mark.parametrize("T,n", [(365*2, 8), (365 * 3, 3)])
+@pytest.mark.parametrize("T,n", [(365*2, 8), (364 * 3, 3)])
 def test_generate_time_series(T, n):
     # verify that time series generated with zero variance reproduce the input's average
     time_series = np.random.random((n, T))
-    years = list(range(2000, 2000 + n))
     # create the model
-    model = ts.create_model(time_series, years)
+    model = ts.create_model(time_series)
     # generate a synthetic time series with zero variance
     result = ts.generate_time_series(model, std_scaling=0.0)[0]
     # compare with the average of time series after making them periodic
-    periodic_time_series = np.array([ts.make_364_periodic(time_series[i], years[i]) for i in range(n)])
-    expected = periodic_time_series.mean(axis=0)
+    expected = time_series.mean(axis=0)
     assert np.max(np.abs(result - expected)) < 1e-6
 
 
