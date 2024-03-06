@@ -174,12 +174,12 @@ def generate_time_series(model: sp.sparse.csr_array, n: int = 1, std_scaling: fl
     return inverse_fourier_transform(x)
 
 
-def get_mean(model: sp.sparse.csr_array) -> np.ndarray:
+def get_mu(model: sp.sparse.csr_array) -> np.ndarray:
     """Return a time series that corresponds to the mean value of the model."""
     return inverse_fourier_transform(model.diagonal())
 
 
-def get_covariance_matrix(model: sp.sparse.csr_array) -> np.ndarray:
+def get_sigma(model: sp.sparse.csr_array) -> np.ndarray:
     """Return the covariance matrix of time series according to the model."""
     T = model.shape[0]
     # compute sigma, the covariance matrix of the Fourier modes
@@ -191,7 +191,7 @@ def get_covariance_matrix(model: sp.sparse.csr_array) -> np.ndarray:
     return 0.5 * (cov + cov.transpose())
 
 
-def get_covariance_variance(model: sp.sparse.csr_array, truncate: int = 10) -> float:
+def get_sigma_variance(model: sp.sparse.csr_array, truncate: int = 10) -> float:
     """Return the variance in time of the covariance of time series according to the model."""
     T = model.shape[0]
     Lt = model[:, T:].transpose()
@@ -200,8 +200,7 @@ def get_covariance_variance(model: sp.sparse.csr_array, truncate: int = 10) -> f
 
 def get_optimal_std_scaling(model: sp.sparse.csr_array, rho: float, truncate: int = 10) -> float:
     """Return a scaling factor for the standard deviation such that the time series obey a given average correlation."""
-    return np.sqrt(np.var(get_mean(model)) / get_covariance_variance(model, truncate) \
-                   * (1.0 / rho - 1.0))
+    return np.sqrt(np.var(get_mu(model)) / get_sigma_variance(model, truncate) * (1.0 / rho - 1.0))
 
 
 def export_model(filename: str, model: sp.sparse.csr_array) -> None:
