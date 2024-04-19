@@ -3,10 +3,10 @@ import pandas as pd
 
 def extract_time_series(data_source: str, data_type: str, column_name: str,
                         data_filter: dict, year: int | list, frequency) -> list:
-    """Extracts a yearly time series of a given type, for a given country and a given year.
+    """Extracts a yearly time series of a given type for a given year.
     The data files must be stored in the folder 'data_source'.
     The data type and column name must match the entso-e format.
-    'country_code' is 'DE' for Germany, 'FR' for France, and so on.
+    The data filter is a dictionary, e.g. {'MapCode': 'DE'} to select only entries belonging to Germany.
     'frequency' uses the following format: 'H' means every hour, '2H' every 2 hours, '15T' every 15 minutes, and so on.
     The time series is returned as a list. Missing value are set to 'None'."""
     if isinstance(year, list):
@@ -22,6 +22,29 @@ def extract_time_series(data_source: str, data_type: str, column_name: str,
         time_series_dict.update(monthly_dict)
 
     return [time_series_dict[t] for t in timesteps]
+
+
+def extract_multiple_time_series(data_source: str, data_type: str, group_by: str, column_name: str,
+                                 data_filter: dict, year: int, frequency) -> dict[hash, list]:
+    """Extracts multiple yearly time series of a given type for a given year.
+    The data files must be stored in the folder 'data_source'.
+    The data type, group by, and column name must match the entso-e format.
+    The data filter is a dictionary, e.g. {'MapCode': 'DE'} to select only entries belonging to Germany.
+    'frequency' uses the following format: 'H' means every hour, '2H' every 2 hours, '15T' every 15 minutes, and so on.
+    The output is a dictionary of time series, each stored as a list with missing values set to 'None'."""
+    timesteps = [str(t) for t in
+                 pd.date_range('%s-01-01' % year, '%s-01-01' % (year + 1), freq=frequency, inclusive='left')]
+    time_series_dict = {}
+    for month in range(1, 13):
+        data = pd.read_csv('%s/%d_%02d_%s.csv' % (data_source, year, month, data_type), sep='\t')
+        for filter_key, filter_val in data_filter.items():
+            data = data[data[filter_key] == filter_val]
+        for label, grouped_data in data.groupby(group_by):
+            if label not in time_series_dict:
+                time_series_dict[label] = {t: None for t in timesteps}
+            monthly_dict = dict(zip(grouped_data['DateTime'].apply(lambda x: x[:19]), grouped_data[column_name]))
+            time_series_dict[label].update(monthly_dict)
+    return {label: [time_series[t] for t in timesteps] for label, time_series in time_series_dict.items()}
 
 
 def extract_load_time_series(data_source: str, country_code: str, year: int | list, frequency: str = 'H') -> list:
@@ -42,7 +65,7 @@ def extract_border_flow_time_series(data_source: str, from_country: str, to_coun
     'from_country' and 'to_country' are of the form 'DE' for Germany, 'FR' for France, and so on.
     'frequency' uses the following format: 'H' means every hour, '2H' every 2 hours, '15T' every 15 minutes, and so on.
     The time series is returned as a list. Missing value are set to 'None'."""
-    country_filter = {'OutAreaName': from_country + ' CTY', 'InAreaName' : to_country + ' CTY'}
+    country_filter = {'OutAreaName': from_country + ' CTY', 'InAreaName': to_country + ' CTY'}
     return extract_time_series(data_source, 'PhysicalFlows_12.1.G', 'FlowValue',
                                country_filter, year, frequency)
 
@@ -54,7 +77,19 @@ def extract_production_by_type_time_series(data_source: str, gen_type: str, coun
     'gen_type' is of the form 'Nuclear', 'Hydro Pumped Storage', 'Hydro Run-of-river and poundage', and so on.
     'country_code' is 'DE' for Germany, 'FR' for France, and so on.
     'frequency' uses the following format: 'H' means every hour, '2H' every 2 hours, '15T' every 15 minutes, and so on.
-    The time series is returned as a list. Missing value are set to 'None'."""
+    The time series is returned as a list. Missing values are set to 'None'."""
     data_filter = {'AreaTypeCode': 'CTY', 'MapCode': country_code, 'ProductionType': gen_type}
     return extract_time_series(data_source, 'AggregatedGenerationPerType_16.1.B_C',
                                'ActualGenerationOutput', data_filter, year, frequency)
+
+
+def extract_production_by_unit_time_series(data_source: str, gen_type: str,
+                                           year: int | list, frequency: str = 'H') -> dict[hash, list]:
+    """Extracts yearly time series of the production of each individual generator of a given type for a given year.
+    The data files must be stored in the folder 'data_source'.
+    'gen_type' is of the form 'Nuclear', 'Hydro Pumped Storage', 'Hydro Run-of-river and poundage', and so on.
+    'frequency' uses the following format: 'H' means every hour, '2H' every 2 hours, '15T' every 15 minutes, and so on.
+    The output is a dictionary of time series, each stored as a list with missing values set to 'None'."""
+    return extract_multiple_time_series(data_source, 'ActualGenerationOutputPerGenerationUnit_16.1.A',
+                                        'PowerSystemResourceName', 'ActualGenerationOutput',
+                                        {'ProductionType': gen_type}, year, frequency)
