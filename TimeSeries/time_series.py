@@ -1,6 +1,7 @@
 import numpy as np
 import scipy as sp
 import datetime
+import scipy.ndimage
 
 
 def interpolate_missing_values(time_series: list | np.ndarray, verbose: bool = True) -> list | np.ndarray:
@@ -42,6 +43,13 @@ def interpolate_missing_values(time_series: list | np.ndarray, verbose: bool = T
             new_time_series[t] = (last_value * (gap_end - t) + next_value * (t - gap_begin + 1)) / gap_width
 
     return new_time_series
+
+
+def smoothen(time_series: np.ndarray, threshold: float = 30.0, filter_window: int = 73) -> np.ndarray:
+    """Remove spikes in a time series by applying a median filter.
+    The original value are preserved whenever they do not differ significantly from the filtered value."""
+    filtered_time_series = scipy.ndimage.median_filter(time_series, filter_window, mode='wrap')
+    return np.where(np.abs(filtered_time_series - time_series) < threshold, time_series, filtered_time_series)
 
 
 def crop_364(time_series: np.ndarray, verbose: bool = True) -> np.ndarray:
