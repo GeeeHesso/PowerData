@@ -1,55 +1,6 @@
 import numpy as np
 import scipy as sp
 import datetime
-import scipy.ndimage
-
-
-def interpolate_missing_values(time_series: list | np.ndarray, verbose: bool = True) -> list | np.ndarray:
-    """Fill in the missing values (None) in a time series by interpolating between the nearest existing values.
-    Wraps around if necessary."""
-
-    series_length = len(time_series)
-
-    # if the first value is missing, roll the series to make it non-missing
-    if time_series[0] is None:
-        first_existing_value = next(t for t, val in enumerate(time_series) if val is not None)
-        new_time_series = time_series[first_existing_value:] + time_series[:first_existing_value]
-        new_time_series = interpolate_missing_values(new_time_series)
-        return new_time_series[-first_existing_value:] + new_time_series[:-first_existing_value]
-
-    # find all the gaps in the data, characterized by the beginning and end index
-    gaps = []
-    gap_length = 0
-    for t, val in enumerate(time_series):
-        if val is None:
-            gap_length += 1
-        elif gap_length > 0:
-            gaps.append((t - gap_length, t))
-            gap_length = 0
-    if gap_length > 0:
-        gaps.append((len(time_series) - gap_length, len(time_series)))
-
-    if verbose:
-        print('Interpolating %d missing values spread over %d gap(s)' %
-              (sum(gap[1] - gap[0] for gap in gaps), len(gaps)))
-
-    # fill the gaps with interpolation
-    new_time_series = time_series.copy()
-    for (gap_begin, gap_end) in gaps:
-        last_value = time_series[gap_begin - 1]
-        next_value = time_series[gap_end % series_length]
-        gap_width = gap_end - gap_begin + 1
-        for t in range(gap_begin, gap_end):
-            new_time_series[t] = (last_value * (gap_end - t) + next_value * (t - gap_begin + 1)) / gap_width
-
-    return new_time_series
-
-
-def smoothen(time_series: np.ndarray, threshold: float = 30.0, filter_window: int = 73) -> np.ndarray:
-    """Remove spikes in a time series by applying a median filter.
-    The original value are preserved whenever they do not differ significantly from the filtered value."""
-    filtered_time_series = scipy.ndimage.median_filter(time_series, filter_window, mode='wrap')
-    return np.where(np.abs(filtered_time_series - time_series) < threshold, time_series, filtered_time_series)
 
 
 def crop_364(time_series: np.ndarray, verbose: bool = True) -> np.ndarray:
