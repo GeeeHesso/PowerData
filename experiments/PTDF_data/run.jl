@@ -14,24 +14,30 @@ const gurobi_env = Gurobi.Env()
 optimizer = MOI.instantiate(MOI.OptimizerWithAttributes(() -> Gurobi.Optimizer(gurobi_env), "OutputFlag" => 0))
 
 function opf(quadratic_cost::AbstractArray{<:Real,2}, linear_cost::AbstractArray{<:Real,2}, 
-        P_max::AbstractVector{<:Real}, P_exp::AbstractVector{<:Real}, P_total::AbstractVector{<:Real},
+        P_max::AbstractVector{<:Real}, P_exp::AbstractVector{<:Real}, P_total::AbstractVector{<:Real};
+        P_min::AbstractVector{<:Real} = Real[],
         A_ramp::AbstractArray{<:Real,2} = Array{Real}(undef, 0, 0), ΔP_ramp::AbstractVector{<:Real} = Real[],
-        P_ramp_first::AbstractVector{<:Real} = Real[], P_ramp_last::AbstractVector{<:Real} = Real[];
+        P_ramp_first::AbstractVector{<:Real} = Real[], P_ramp_last::AbstractVector{<:Real} = Real[],
         log_group::String = "")
     
     N = length(P_max)
     T = length(P_total)
     n_ramp = length(ΔP_ramp)
 
+    if length(P_min) == 0
+        P_min = zeros(N)
+    end
+
     # check dimensions of the input
     @assert length(P_exp) == N
+    @assert length(P_min) == N
     @assert size(quadratic_cost) == (N, N)
     @assert size(linear_cost) == (N, T)
     @assert (size(A_ramp) == (n_ramp, N)) || (n_ramp == 0)
     @assert length(P_ramp_first) ∈ [0, n_ramp]
     @assert length(P_ramp_last) == length(P_ramp_first)
 
-    ramp_constraint_type = length(P_ramp_first) == 0 ? "periodic" : "fixed boundaries"
+    ramp_constraint_type = length(P_ramp_first) == 0 ? "cyclic" : "fixed boundaries"
     @info ("OPF with $T time steps, $N generators, " *
         "and $n_ramp ramp constraints ($ramp_constraint_type)") _group = log_group
     log_group = " "^length(log_group)
@@ -50,7 +56,7 @@ function opf(quadratic_cost::AbstractArray{<:Real,2}, linear_cost::AbstractArray
 
     # constraints 
     @info " -> defining constraints" _group = log_group
-    MOI.add_constraints(optimizer, P_vec, [MOI.Interval(0.0, P_max[i]) for t = 1:T for i = 1:N])
+    MOI.add_constraints(optimizer, P_vec, [MOI.Interval(P_min[i], P_max[i]) for t = 1:T for i = 1:N])
 
     MOI.add_constraints(optimizer,
         [MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, P[i,t]) for t = 1:T], 0.0) for i = 2:N],
@@ -103,22 +109,28 @@ end
 
 function partitioned_opf(partitions::Vector{Int},
         quadratic_cost::AbstractArray{<:Real,2}, linear_cost::AbstractArray{<:Real,2}, 
-        P_max::AbstractVector{<:Real}, P_exp::AbstractVector{<:Real}, P_total::AbstractVector{<:Real},
+        P_max::AbstractVector{<:Real}, P_exp::AbstractVector{<:Real}, P_total::AbstractVector{<:Real};
+        P_min::AbstractVector{<:Real} = Real[],
         A_ramp::AbstractArray{<:Real,2} = Array{Real}(undef, 0, 0), ΔP_ramp::AbstractVector{<:Real} = Real[],
-        P_ramp_first::AbstractVector{<:Real} = Real[], P_ramp_last::AbstractVector{<:Real} = Real[];
+        P_ramp_first::AbstractVector{<:Real} = Real[], P_ramp_last::AbstractVector{<:Real} = Real[],
         log_group::String = "")
 
     if length(partitions) <= 1
-        return opf(quadratic_cost, linear_cost, P_max, P_exp, P_total,
-            A_ramp, ΔP_ramp, P_ramp_first, P_ramp_last, log_group = log_group)
+        return opf(quadratic_cost, linear_cost, P_max, P_exp, P_total, P_min = P_min,
+            A_ramp = A_ramp, ΔP_ramp = ΔP_ramp, P_ramp_first = P_ramp_first, P_ramp_last = P_ramp_last, log_group = log_group)
     end
     
     N = length(P_max)
     T = length(P_total)
     n_ramp = length(ΔP_ramp)
 
+    if length(P_min) == 0
+        P_min = zeros(N)
+    end
+    
     # check dimensions of the input that needs to be partitioned
     @assert length(P_exp) == N
+    @assert length(P_min) == N
     @assert size(quadratic_cost) == (N, N)
     @assert size(linear_cost) == (N, T)
     @assert (size(A_ramp) == (n_ramp, N)) || (n_ramp == 0)
@@ -139,9 +151,10 @@ function partitioned_opf(partitions::Vector{Int},
     aggregated_linear_cost = dropdims(sum(partitioned_linear_cost, dims=2), dims=2) / partition_length
 
     aggregated_P_max = (P_max + P_exp) / 2.0
+    aggregated_P_min = (P_min + P_exp) / 2.0
     
     partitioned_P_exp = opf(quadratic_cost, aggregated_linear_cost, aggregated_P_max, P_exp, aggregated_P_total,
-        A_ramp, ΔP_ramp, P_ramp_first, P_ramp_last,
+        P_min = aggregated_P_min, A_ramp = A_ramp, ΔP_ramp = ΔP_ramp, P_ramp_first = P_ramp_first, P_ramp_last = P_ramp_last,
         log_group = log_group * " $(lpad(0, counter_width))/$(n_partitions)")
 
     partitioned_P_ramp = n_ramp > 0 ? A_ramp * partitioned_P_exp : Real[]
@@ -185,7 +198,8 @@ function partitioned_opf(partitions::Vector{Int},
         
         partition_result = @timed partitioned_opf(partitions[2:end], quadratic_cost, partitioned_linear_cost[:,:,a],
             P_max, partitioned_P_exp[:,a], partitioned_P_total[:,a],
-            A_ramp, ΔP_ramp, partitioned_P_ramp_previous, partitioned_P_ramp_next,
+            P_min = P_min, A_ramp = A_ramp, ΔP_ramp = ΔP_ramp,
+            P_ramp_first = partitioned_P_ramp_previous, P_ramp_last = partitioned_P_ramp_next,
             log_group = log_group * " $(lpad(a, counter_width))/$(n_partitions)")
         push!(timing, partition_result.time)
         result = hcat(result, partition_result.value)
@@ -204,7 +218,7 @@ A_ramp = DataDrop.retrieve_matrix("A_gen_ramp.h5")
 ΔP_ramp = DataDrop.retrieve_matrix("gen_ramp.h5")
 
 result = partitioned_opf([52, 168], quadratic_cost, linear_line_cost + noise_factor * linear_gen_cost,
-    P_max, P_exp, P_total, A_ramp, ΔP_ramp)
+    P_max, P_exp, P_total, A_ramp = A_ramp, ΔP_ramp = ΔP_ramp)
 
 result = map(x -> isapprox(x, 0, atol=1e-6) ? 0.0 : x, result)
 
