@@ -1,6 +1,9 @@
 # IDE
 */.idea
 
+# Julia
+Manifest.toml
+
 # Python
 **/__pycache__
 
