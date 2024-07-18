@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import scipy as sp
 import calendar
-from tqdm import trange
+from tqdm.auto import tqdm, trange
 
 
 def read_time_series(data_source: str, year: int, data_type: str,
@@ -71,7 +71,8 @@ def extract_time_series(data_source: str, year: int | list[int], data_type: str,
     The data filter is a dictionary, e.g. {'MapCode': 'DE'} to select only entries belonging to Germany.
     The time series is returned as a list. Missing value are set to 'None'."""
     if isinstance(year, list):
-        return [extract_time_series(data_source, y, data_type, column_name, data_filter, daily_steps) for y in year]
+        return [extract_time_series(data_source, y, data_type, column_name, data_filter, daily_steps)
+                for y in tqdm(year)]
     dataframe = read_time_series(data_source, year, data_type, column_name, data_filter)
     if smoothen:
         dataframe[column_name] = smoothen_time_series(dataframe[column_name], smoothen_threshold, smoothen_window)
@@ -128,12 +129,50 @@ def extract_production_by_type_time_series(data_source: str, gen_type: str, coun
                                'ActualGenerationOutput', data_filter, daily_steps)
 
 
-def extract_production_by_unit_time_series(data_source: str, gen_type: str, year: int | list,
-                                           daily_steps: int = 24) -> dict[hash, np.ndarray]:
+def extract_production_by_unit_time_series(data_source: str, year: int | list, daily_steps: int = 24,
+                                           gen_type: str = None, country_code: str = None) -> dict[hash, np.ndarray]:
     """Extracts yearly time series of the production of each individual generator of a given type for a given year.
     The data files must be stored in the folder 'data_source'.
     'gen_type' is of the form 'Nuclear', 'Hydro Pumped Storage', 'Hydro Run-of-river and poundage', and so on.
+    'country_code' is 'DE' for Germany, 'FR' for France, and so on.
     The output is a dictionary of time series, each stored as a list with missing values set to 'None'."""
+    filter = dict()
+    if gen_type is not None:
+        filter['ProductionType'] = gen_type
+    if country_code is not None:
+        filter['MapCode'] = country_code
     return extract_multiple_time_series(data_source, year, 'ActualGenerationOutputPerGenerationUnit_16.1.A',
                                         'PowerSystemResourceName', 'ActualGenerationOutput',
-                                        {'ProductionType': gen_type}, daily_steps, smoothen=True)
+                                        filter, daily_steps, smoothen=True)
+
+
+def extract_unique_values(data_source: str, year: int, data_type: str,
+                          column_name: str, data_filter: dict[str, str], month: int = 1) -> list[str]:
+    """Extracts the list of unique values of a given column of a file.
+    The data filter is a dictionary, e.g. {'MapCode': 'DE'} to select only entries belonging to Germany."""
+    data = pd.read_csv('%s/%d_%02d_%s.csv' % (data_source, year, month, data_type), sep='\t',
+                       usecols=[column_name] + list(data_filter.keys()))
+    # apply filter
+    for filter_key, filter_val in data_filter.items():
+        data = data[data[filter_key] == filter_val]
+    return list(data[column_name].unique())
+
+
+def extract_individual_production_types(data_source: str, year: int, month: int = 1) -> list[str]:
+    """Extracts the list of distinct production types for individual generators."""
+    return extract_unique_values(data_source, year, 'ActualGenerationOutputPerGenerationUnit_16.1.A',
+                                 'ProductionType', {}, month=month)
+
+
+def extract_generators_names(data_source: str, year: int, gen_type: str = None,
+                             country_code: str = None, month: int = 1) -> list[str]:
+    """Extracts the list of individual generators of a given type in a given country.
+    'country_code' is 'DE' for Germany, 'FR' for France, and so on.
+    'gen_type' is of the form 'Nuclear', 'Hydro Pumped Storage', 'Hydro Run-of-river and poundage', and so on."""
+    filter = dict()
+    if gen_type is not None:
+        filter['ProductionType'] = gen_type
+    if country_code is not None:
+        filter['MapCode'] = country_code
+    return extract_unique_values(data_source, year, 'ActualGenerationOutputPerGenerationUnit_16.1.A',
+                                 'PowerSystemResourceName', filter, month=month)
