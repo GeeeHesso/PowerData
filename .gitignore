@@ -1,5 +1,5 @@
 # IDE
-*/.idea
+**/.idea
 
 # Julia
 Manifest.toml
@@ -10,10 +10,6 @@ Manifest.toml
 # Jupyter
 **/.ipynb_checkpoints
 
-# temporary model files created in doc folder
-doc/*.npz
-
 # data
-doc/data/*
-
-
+doc/data
+run/data
