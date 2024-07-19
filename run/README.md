@@ -11,6 +11,13 @@ The following notebooks must be run in this order:
 3. [import_border_flows](./import_border_flows.ipynb):
    calculate the import/export balance for each country in the model
 4. [generate_cost_noise](./generate_cost_noise.ipynb):
-   ...
-5. [setup_OPF](./setup_OPF) (Julia):
-   ...
+   generate noise series for the generation cost
+5. [setup_TOPF](./setup_TOPF) (Julia):
+   collect all the data generated above and setup the optimal power flow computation
+6. [TOPF_test](./TOPF_test.ipynb) (Julia):
+   run a small-scale version of the optimal power flow as a test
+
+After that, the optimal power flow computation can be launched with:
+```bash
+julia run/run_TOPF.jl
+```
