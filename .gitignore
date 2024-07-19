@@ -11,5 +11,4 @@ Manifest.toml
 **/.ipynb_checkpoints
 
 # data
-doc/data
-run/data
+*/data/*

@@ -10,7 +10,7 @@ def read_time_series(data_source: str, year: int, data_type: str,
     """Reads a time series from 12 monthly CSV files of a given year and combine it into a single DataFrame.
     The data filter is a dictionary, e.g. {'MapCode': 'DE'} to select only entries belonging to Germany."""
     dataframes = []
-    for month in trange(1, 13):
+    for month in trange(1, 13, leave=False):
         data = pd.read_csv('%s/%d_%02d_%s.csv' % (data_source, year, month, data_type), sep='\t',
                            usecols=['DateTime', column_name] + list(data_filter.keys()),
                            parse_dates=['DateTime'])
@@ -28,7 +28,7 @@ def read_multiple_time_series(data_source: str, year: int, data_type: str, group
     """Reads mulitple time series from 12 monthly CSV files of a given year and combine them into DataFrames.
     The data filter is a dictionary, e.g. {'MapCode': 'DE'} to select only entries belonging to Germany."""
     dataframes = {}
-    for month in trange(1, 13):
+    for month in trange(1, 13, leave=False):
         data = pd.read_csv('%s/%d_%02d_%s.csv' % (data_source, year, month, data_type), sep='\t',
                            usecols=['DateTime', group_by, column_name] + list(data_filter.keys()),
                            parse_dates=['DateTime'])
@@ -72,7 +72,7 @@ def extract_time_series(data_source: str, year: int | list[int], data_type: str,
     The time series is returned as a list. Missing value are set to 'None'."""
     if isinstance(year, list):
         return [extract_time_series(data_source, y, data_type, column_name, data_filter, daily_steps)
-                for y in tqdm(year)]
+                for y in tqdm(year, leave=False)]
     dataframe = read_time_series(data_source, year, data_type, column_name, data_filter)
     if smoothen:
         dataframe[column_name] = smoothen_time_series(dataframe[column_name], smoothen_threshold, smoothen_window)
@@ -176,3 +176,15 @@ def extract_generators_names(data_source: str, year: int, gen_type: str = None,
         filter['MapCode'] = country_code
     return extract_unique_values(data_source, year, 'ActualGenerationOutputPerGenerationUnit_16.1.A',
                                  'PowerSystemResourceName', filter, month=month)
+
+def extract_neighboring_country_pairs(data_source: str, year: int, month: int = 1) -> list[(str, str)]:
+    """Extracts a list of pairs of neighboring country codes for a given year."""
+    out_countries = extract_unique_values(data_source, year, 'PhysicalFlows_12.1.G',
+                                         'OutMapCode',{'OutAreaTypeCode': 'CTY'}, month=month)
+    country_pairs = []
+    for out_country in tqdm(out_countries, leave=False):
+        in_countries = extract_unique_values(data_source, year, 'PhysicalFlows_12.1.G',
+                                             'InMapCode', {'OutAreaTypeCode': 'CTY', 'OutMapCode': out_country,
+                                                           'InAreaTypeCode': 'CTY'}, month=month)
+        country_pairs += [(out_country, in_country) for in_country in in_countries]
+    return country_pairs
