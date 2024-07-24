@@ -15,9 +15,16 @@ The following notebooks must be run in this order:
 5. [setup_TOPF](./setup_TOPF.ipynb) (Julia):
    collect all the data generated above and setup the optimal power flow computation
 6. [TOPF_test](./TOPF_test.ipynb) (Julia):
-   run a small-scale version of the optimal power flow as a test
+   run a small-scale version of the optimal power flow as a test;
+   the actual computation can be launched with
+   ```bash
+   julia run/run_TOPF.jl
+   ```
+7. [TOPF_analysis](./TOPF_analysis.ipynb) (Julia):
+   analyse the results of the optimal power flow computation and export tables containing the data
+7. [TOPF_noise_comparison](./TOPF_noise_comparison.ipynb) (Julia):
+   comparison between different noise levels for the generation cost, which must be generated before with 
+   ```bash
+   julia run/run_TOPF.jl <noise-level-value>
+   ```
 
-After that, the optimal power flow computation can be launched with:
-```bash
-julia run/run_TOPF.jl
-```
