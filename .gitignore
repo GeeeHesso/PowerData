@@ -1,5 +1,8 @@
 # IDE
-*/.idea
+**/.idea
+
+# Julia
+Manifest.toml
 
 # Python
 **/__pycache__
@@ -7,10 +10,5 @@
 # Jupyter
 **/.ipynb_checkpoints
 
-# temporary model files created in doc folder
-doc/*.npz
-
 # data
-doc/data/*
-
-
+*/data/*
