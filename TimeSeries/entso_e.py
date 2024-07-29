@@ -6,32 +6,33 @@ from tqdm.auto import tqdm, trange
 
 
 def read_time_series(data_source: str, year: int, data_type: str,
-                     column_name: str, data_filter: dict[str, str]) -> pd.DataFrame:
+                     column_name: str, data_filter: dict[str, str], datetime_column = 'DateTime') -> pd.DataFrame:
     """Reads a time series from 12 monthly CSV files of a given year and combine it into a single DataFrame.
     The data filter is a dictionary, e.g. {'MapCode': 'DE'} to select only entries belonging to Germany."""
     dataframes = []
     for month in trange(1, 13, leave=False):
         data = pd.read_csv('%s/%d_%02d_%s.csv' % (data_source, year, month, data_type), sep='\t',
-                           usecols=['DateTime', column_name] + list(data_filter.keys()),
-                           parse_dates=['DateTime'])
+                           usecols=[datetime_column, column_name] + list(data_filter.keys()),
+                           parse_dates=[datetime_column])
         # apply filter
         for filter_key, filter_val in data_filter.items():
             data = data[data[filter_key] == filter_val]
         # NaN values are set to zero
         data = data.fillna({column_name: 0.})
-        dataframes.append(data[['DateTime', column_name]])
-    return pd.concat(dataframes, ignore_index=True).sort_values('DateTime')
+        dataframes.append(data[[datetime_column, column_name]])
+    return pd.concat(dataframes, ignore_index=True).sort_values(datetime_column)
 
 
 def read_multiple_time_series(data_source: str, year: int, data_type: str, group_by: str,
-                              column_name: str, data_filter: dict[str, str]) -> dict[hash, pd.DataFrame]:
+                              column_name: str, data_filter: dict[str, str],
+                              datetime_column = 'DateTime') -> dict[hash, pd.DataFrame]:
     """Reads mulitple time series from 12 monthly CSV files of a given year and combine them into DataFrames.
     The data filter is a dictionary, e.g. {'MapCode': 'DE'} to select only entries belonging to Germany."""
     dataframes = {}
     for month in trange(1, 13, leave=False):
         data = pd.read_csv('%s/%d_%02d_%s.csv' % (data_source, year, month, data_type), sep='\t',
-                           usecols=['DateTime', group_by, column_name] + list(data_filter.keys()),
-                           parse_dates=['DateTime'])
+                           usecols=[datetime_column, group_by, column_name] + list(data_filter.keys()),
+                           parse_dates=[datetime_column])
         # apply filter
         for filter_key, filter_val in data_filter.items():
             data = data[data[filter_key] == filter_val]
@@ -40,8 +41,8 @@ def read_multiple_time_series(data_source: str, year: int, data_type: str, group
         for label, grouped_data in data.groupby(group_by):
             if label not in dataframes:
                 dataframes[label] = []
-            dataframes[label].append(grouped_data[['DateTime', column_name]])
-    return {label: pd.concat(df_list, ignore_index=True).sort_values('DateTime')
+            dataframes[label].append(grouped_data[[datetime_column, column_name]])
+    return {label: pd.concat(df_list, ignore_index=True).sort_values(datetime_column)
             for label, df_list in dataframes.items()}
 
 
@@ -52,47 +53,52 @@ def smoothen_time_series(time_series: pd.Series, threshold: float = 30.0, filter
     return np.where(np.abs(filtered_time_series - time_series) < threshold, time_series, filtered_time_series)
 
 
-def interpolate_time_series(data: pd.DataFrame, column_name: str, year: int, daily_steps: int = 24) -> np.ndarray:
+def interpolate_time_series(data: pd.DataFrame, column_name: str, year: int, daily_steps: int = 24,
+                            datetime_column = 'DateTime') -> np.ndarray:
     """Returns a time series with a given number of daily steps by linear interpolation
     from a dataframe containing time stamps and values in a given column."""
     T = daily_steps * (366 if calendar.isleap(year) else 365)
     jan1st = pd.Timestamp('%d-01-01 00:00' % year)
-    t = data['DateTime'].apply(lambda date: (date - jan1st) / pd.Timedelta(days=1/daily_steps))
+    t = data[datetime_column].apply(lambda date: (date - jan1st) / pd.Timedelta(days=1/daily_steps))
     return np.interp(range(T), t, data[column_name], period=T)
 
 
 def extract_time_series(data_source: str, year: int | list[int], data_type: str,
                         column_name: str, data_filter: dict[str, str], daily_steps: int = 24,
                         smoothen: bool = False, smoothen_threshold: float = 30.0,
-                        smoothen_window: int = 101) -> np.ndarray | list[np.ndarray]:
+                        smoothen_window: int = 101, datetime_column = 'DateTime') -> np.ndarray | list[np.ndarray]:
     """Extracts a yearly time series of a given type for a given year.
     The data files must be stored in the folder 'data_source'.
     The data type and column name must match the entso-e format.
     The data filter is a dictionary, e.g. {'MapCode': 'DE'} to select only entries belonging to Germany.
     The time series is returned as a list. Missing value are set to 'None'."""
     if isinstance(year, list):
-        return [extract_time_series(data_source, y, data_type, column_name, data_filter, daily_steps)
+        return [extract_time_series(data_source, y, data_type, column_name, data_filter, daily_steps,
+                                    datetime_column = datetime_column)
                 for y in tqdm(year, leave=False)]
-    dataframe = read_time_series(data_source, year, data_type, column_name, data_filter)
+    dataframe = read_time_series(data_source, year, data_type, column_name, data_filter,
+                                 datetime_column = datetime_column)
     if smoothen:
         dataframe[column_name] = smoothen_time_series(dataframe[column_name], smoothen_threshold, smoothen_window)
-    return interpolate_time_series(dataframe, column_name, year, daily_steps)
+    return interpolate_time_series(dataframe, column_name, year, daily_steps, datetime_column = datetime_column)
 
 
 def extract_multiple_time_series(data_source: str, year: int, data_type: str, group_by: str, column_name: str,
                                  data_filter: dict[str, str], daily_steps: int = 24,
                                  smoothen: bool = False, smoothen_threshold: float = 30.0,
-                                 smoothen_window: int = 101) -> dict[hash, np.ndarray]:
+                                 smoothen_window: int = 101, datetime_column = 'DateTime') -> dict[hash, np.ndarray]:
     """Extracts multiple yearly time series of a given type for a given year.
     The data files must be stored in the folder 'data_source'.
     The data type, group by, and column name must match the entso-e format.
     The data filter is a dictionary, e.g. {'MapCode': 'DE'} to select only entries belonging to Germany.
     The output is a dictionary of time series, each stored as a list with missing values set to 'None'."""
-    dataframes = read_multiple_time_series(data_source, year, data_type, group_by, column_name, data_filter)
+    dataframes = read_multiple_time_series(data_source, year, data_type, group_by, column_name, data_filter,
+                                           datetime_column = datetime_column)
     if smoothen:
         for df in dataframes.values():
             df[column_name] = smoothen_time_series(df[column_name], smoothen_threshold, smoothen_window)
-    return {label: interpolate_time_series(df, column_name, year, daily_steps) for label, df in dataframes.items()}
+    return {label: interpolate_time_series(df, column_name, year, daily_steps, datetime_column = datetime_column)
+            for label, df in dataframes.items()}
 
 
 def extract_load_time_series(data_source: str, country_code: str, year: int | list,
@@ -144,6 +150,23 @@ def extract_production_by_unit_time_series(data_source: str, year: int | list, d
     return extract_multiple_time_series(data_source, year, 'ActualGenerationOutputPerGenerationUnit_16.1.A',
                                         'PowerSystemResourceName', 'ActualGenerationOutput',
                                         filter, daily_steps, smoothen=True)
+
+
+def extract_production_by_unit_time_series_v2(data_source: str, year: int | list, daily_steps: int = 24,
+                                              gen_type: str = None, country_code: str = None) -> dict[hash, np.ndarray]:
+    """Extracts yearly time series of the production of each individual generator of a given type for a given year.
+    The data files must be stored in the folder 'data_source'.
+    'gen_type' is of the form 'Nuclear', 'Hydro Pumped Storage', 'Hydro Run-of-river and poundage', and so on.
+    'country_code' is 'DE' for Germany, 'FR' for France, and so on.
+    The output is a dictionary of time series, each stored as a list with missing values set to 'None'."""
+    filter = dict()
+    if gen_type is not None:
+        filter['GenerationUnitType'] = gen_type
+    if country_code is not None:
+        filter['MapCode'] = country_code
+    return extract_multiple_time_series(data_source, year, 'ActualGenerationOutputPerGenerationUnit_16.1.A_r2.1',
+                                        'GenerationUnitName', 'ActualGenerationOutput(MW)',
+                                        filter, daily_steps, smoothen=True, datetime_column = 'DateTime (UTC)')
 
 
 def extract_unique_values(data_source: str, year: int, data_type: str,
