@@ -10,3 +10,7 @@ Several Jupyter notebooks documenting the usage of these packages can be found i
 
 The [run](./run) directory contains more notebooks used to generate data for a particular model of the European transmission grid.
 This model can be found in the [models](./models) directory, along with a few other models restricted to individual countries.
+
+
+![Map of the European transmission grid model](./models/figures/europe.png "The transmission grid model of continental Europe")
+
