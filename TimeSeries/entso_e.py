@@ -181,6 +181,16 @@ def extract_unique_values(data_source: str, year: int, data_type: str,
     return list(data[column_name].unique())
 
 
+def extract_aggregated_production_types(data_source: str, year: int, country_code: str = None,
+                                        month: int = 1) -> list[str]:
+    """Extracts the list of distinct production types for aggregated production by type."""
+    filter = dict()
+    if country_code is not None:
+        filter['MapCode'] = country_code
+    return extract_unique_values(data_source, year, 'AggregatedGenerationPerType_16.1.B_C',
+                                 'ProductionType', filter, month=month)
+
+
 def extract_individual_production_types(data_source: str, year: int, month: int = 1) -> list[str]:
     """Extracts the list of distinct production types for individual generators."""
     return extract_unique_values(data_source, year, 'ActualGenerationOutputPerGenerationUnit_16.1.A',
