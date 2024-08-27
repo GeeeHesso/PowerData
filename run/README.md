@@ -12,7 +12,7 @@ The following notebooks must be run in this order:
    generate synthetic time series for all the loads in the model
 4. [generate_cost_noise](./generate_cost_noise.ipynb) (Python):
    generate noise series for the generation costs
-5. [setup_TOPF](./setup_TOPF.ipynb) (Julia):
+5. [TOPF_setup](./TOPF_setup.ipynb) (Julia):
    collect all the data generated above and setup the optimal power flow computation
 6. [TOPF_test](./TOPF_test.ipynb) (Julia):
    run a small-scale version of the optimal power flow as a test;
