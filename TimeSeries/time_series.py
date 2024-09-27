@@ -194,7 +194,7 @@ def generate_noise_with_frequencies(daily_steps: int, frequencies: list | np.nda
     return np.sqrt(2./n) * np.sum(A * np.cos(2. * np.pi * (freq_times_t + theta)), axis=2)
 
 
-def generate_noise(daily_steps: int = 24, count: int = 1, daily_frequencies: int = 10,
+def generate_noise(daily_steps: int = 24, count: int = 1, daily_frequencies: int = 3,
                    weekly_frequencies: int = 6, yearly_frequencies: int = 10):
     """Generates a time series of 364 days with a given number of daily steps (typically 24).
     The time series is a superposition of oscillatory series (cosines)
